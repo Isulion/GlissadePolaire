@@ -1,0 +1,250 @@
+
+<!DOCTYPE html>
+<html lang="fr" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Glissade Polaire</title>
+    <style>
+        :root {
+            --bg-color: #0d1a26;
+            --text-color: #f0f8ff;
+            --canvas-bg: linear-gradient(180deg, #1a2938 0%, #3d5a80 100%);
+            --canvas-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+            --hud-bg: rgba(13, 26, 38, 0.7);
+            --hud-border: #98c1d9;
+            --accent-color: #ee6c4d;
+            --penguin-color: #333;
+            --rock-color: #adb5bd;
+            --rock-shadow: #6c757d;
+            --crevasse-color: #1a2938;
+            --bird-color: #ffd700;
+            --bird-accent: #c7a200;
+            --cloud-color: rgba(255, 255, 255, 0.8);
+            --ground-color: #f0f8ff;
+            --particle-color: #ffffff;
+            --font-family: 'Arial', sans-serif;
+        }
+
+        html[data-theme='light'] {
+            --bg-color: #e0fbfc;
+            --text-color: #293241;
+            --canvas-bg: linear-gradient(180deg, #98c1d9 0%, #e0fbfc 100%);
+            --canvas-shadow: 0 10px 30px rgba(41, 50, 65, 0.2);
+            --hud-bg: rgba(255, 255, 255, 0.7);
+            --hud-border: #3d5a80;
+            --accent-color: #d90429;
+            --rock-color: #6c757d;
+            --rock-shadow: #495057;
+            --crevasse-color: #3d5a80;
+            --bird-color: #ffc300;
+            --bird-accent: #b38600;
+            --cloud-color: rgba(255, 255, 255, 0.9);
+            --ground-color: #ffffff;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body { width: 100%; height: 100%; overflow: hidden; background-color: var(--bg-color); color: var(--text-color); font-family: var(--font-family); font-size: 16px; }
+        body { display: flex; justify-content: center; align-items: center; }
+        #game-container { position: relative; width: 100vw; height: 100vh; display: flex; justify-content: center; align-items: center; }
+        #game-canvas { background: var(--canvas-bg); border-radius: 20px; box-shadow: var(--canvas-shadow); image-rendering: -webkit-optimize-contrast; image-rendering: crisp-edges; }
+        #hud { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); display: flex; gap: 2rem; padding: 1rem 2rem; background-color: var(--hud-bg); border: 2px solid var(--hud-border); border-radius: 15px; backdrop-filter: blur(5px); font-weight: bold; font-size: 1.5rem; text-align: center; transition: all 0.3s ease; }
+        .hud-item { display: flex; flex-direction: column; min-width: 120px; }
+        .hud-label { font-size: 0.8rem; text-transform: uppercase; opacity: 0.8; }
+        .main-menu { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: var(--hud-bg); padding: 2.5rem 3rem; border-radius: 20px; text-align: center; border: 2px solid var(--hud-border); backdrop-filter: blur(10px); box-shadow: var(--canvas-shadow); display: flex; flex-direction: column; gap: 1.5rem; min-width: 400px; }
+        .main-menu h1 { font-size: 3rem; color: var(--accent-color); text-shadow: 2px 2px 5px rgba(0,0,0,0.2); }
+        .menu-button { padding: 1rem 2rem; font-size: 1.2rem; font-weight: bold; color: var(--text-color); background-color: var(--accent-color); border: none; border-radius: 10px; cursor: pointer; transition: transform 0.2s ease, box-shadow 0.2s ease; }
+        .menu-button:hover, .menu-button:focus { transform: translateY(-5px); box-shadow: 0 8px 15px rgba(0,0,0,0.3); outline: 3px solid var(--hud-border); }
+        .difficulty-selector { display: flex; justify-content: center; gap: 1rem; margin-top: 1rem; }
+        .difficulty-btn { padding: 0.5rem 1rem; border: 2px solid var(--hud-border); background-color: transparent; color: var(--text-color); border-radius: 8px; cursor: pointer; transition: background-color 0.2s; }
+        .difficulty-btn.active, .difficulty-btn:hover { background-color: var(--accent-color); border-color: var(--accent-color); }
+        .settings-panel { position: absolute; bottom: 20px; right: 20px; display: flex; flex-direction: column; gap: 1rem; background: var(--hud-bg); padding: 1.5rem; border-radius: 15px; }
+        .setting { display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
+        .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border-width: 0; }
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+    <div id="game-container" role="application">
+        <canvas id="game-canvas"></canvas>
+        <div id="hud" class="hidden" role="status" aria-live="polite">
+            <div class="hud-item"><span class="hud-label">Score</span><span id="score">0</span></div>
+            <div class="hud-item"><span class="hud-label">Distance</span><span id="distance">0 m</span></div>
+            <div class="hud-item"><span class="hud-label">Vitesse</span><span id="speed">0 km/h</span></div>
+        </div>
+        <div id="main-menu" class="main-menu" role="dialog" aria-labelledby="menu-title">
+            <h1 id="menu-title">Glissade Polaire</h1>
+            <div id="difficulty-selector" class="difficulty-selector">
+                <button class="difficulty-btn" data-difficulty="easy">Facile</button>
+                <button class="difficulty-btn active" data-difficulty="normal">Normal</button>
+                <button class="difficulty-btn" data-difficulty="hard">Difficile</button>
+            </div>
+            <button id="start-game-btn" class="menu-button">Démarrer le jeu</button>
+            <div id="high-scores">Meilleur Score: <span id="high-score">0</span></div>
+        </div>
+        <div id="game-over-menu" class="main-menu hidden" role="alertdialog" aria-labelledby="game-over-title">
+            <h2 id="game-over-title">Partie Terminée</h2>
+            <p>Score Final: <span id="final-score">0</span></p>
+            <button id="restart-game-btn" class="menu-button">Rejouer</button>
+        </div>
+        <div class="settings-panel" role="toolbar" aria-label="Paramètres du jeu">
+             <div class="setting"><label for="theme-toggle" class="sr-only">Thème Clair/Sombre</label><button id="theme-toggle" aria-label="Changer de thème">☀️ / 🌙</button></div>
+             <div class="setting"><label for="volume-slider">Volume</label><input type="range" id="volume-slider" min="0" max="1" step="0.1" value="0.5"></div>
+        </div>
+        <div id="aria-announcer" class="sr-only" aria-live="assertive"></div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+
+            const canvas = document.getElementById('game-canvas');
+            const ctx = canvas.getContext('2d');
+            const hud = document.getElementById('hud');
+            const scoreEl = document.getElementById('score');
+            const distanceEl = document.getElementById('distance');
+            const speedEl = document.getElementById('speed');
+            const mainMenu = document.getElementById('main-menu');
+            const gameOverMenu = document.getElementById('game-over-menu');
+            const startGameBtn = document.getElementById('start-game-btn');
+            const restartGameBtn = document.getElementById('restart-game-btn');
+            const finalScoreEl = document.getElementById('final-score');
+            const highScoreEl = document.getElementById('high-score');
+            const themeToggleBtn = document.getElementById('theme-toggle');
+            const volumeSlider = document.getElementById('volume-slider');
+            const announcer = document.getElementById('aria-announcer');
+            const difficultySelector = document.getElementById('difficulty-selector');
+
+            const GAME_WIDTH = 1920;
+            const GAME_HEIGHT = 1080;
+            const FIXED_UPDATE_RATE = 1000 / 60;
+            
+            // *** ACCELERATION FORTEMENT AUGMENTÉE ***
+            const DIFFICULTY_SETTINGS = {
+                easy:   { baseSpeed: 4,   acceleration: 0.01,   minGap: 700, maxGap: 1500 },
+                normal: { baseSpeed: 5,   acceleration: 0.015,  minGap: 600, maxGap: 1300 },
+                hard:   { baseSpeed: 6.5, acceleration: 0.025,  minGap: 500, maxGap: 1000 }
+            };
+
+            let gameState = { running: false, score: 0, distance: 0, speed: 0, speedMultiplier: 1, accumulator: 0, highScore: 0, volume: 0.5, theme: 'dark', difficulty: 'normal', currentDifficulty: DIFFICULTY_SETTINGS.normal };
+            const keys = new Set();
+            let player, obstacles = [], clouds = [], terrainPoints = [], particles = [];
+
+            // --- MOTEUR DE JEU ---
+            let lastFrameTime = 0;
+            function gameLoop(currentTime) { if (!gameState.running) return; const deltaTime = (currentTime - lastFrameTime) / 1000; lastFrameTime = currentTime; const safeDelta = Math.min(deltaTime, 1/15); gameState.accumulator += safeDelta; while (gameState.accumulator >= FIXED_UPDATE_RATE / 1000) { update(FIXED_UPDATE_RATE / 1000); gameState.accumulator -= FIXED_UPDATE_RATE / 1000; } render(); requestAnimationFrame(gameLoop); }
+            function update(dt) { let slideBonus = 0; if(player && player.isSliding) { const currentAngle = getTerrainInfoAt(player.x).angle; slideBonus = Math.abs(currentAngle) * 5; } gameState.speedMultiplier += gameState.currentDifficulty.acceleration * dt; gameState.speed = gameState.currentDifficulty.baseSpeed * gameState.speedMultiplier + slideBonus; gameState.distance += gameState.speed * dt; gameState.score += gameState.speed * dt * (1 + slideBonus / 5); updateTerrain(); player.update(dt); updateObstacles(); updateClouds(); updateParticles(dt); checkCollisions(); updateHUD(); }
+            function render() { const scaleX = canvas.width / (GAME_WIDTH * window.devicePixelRatio); const scaleY = canvas.height / (GAME_HEIGHT * window.devicePixelRatio); ctx.save(); ctx.scale(scaleX, scaleY); ctx.clearRect(0, 0, GAME_WIDTH, GAME_HEIGHT); drawBackgroundAndTerrain(); drawParticles(ctx); obstacles.forEach(obstacle => obstacle.draw(ctx)); player.draw(ctx); ctx.restore(); }
+            function resizeCanvas() { const dpr = window.devicePixelRatio || 1; const containerRect = canvas.parentElement.getBoundingClientRect(); const aspectRatio = GAME_WIDTH / GAME_HEIGHT; let newWidth = containerRect.width; let newHeight = newWidth / aspectRatio; if (newHeight > containerRect.height) { newHeight = containerRect.height; newWidth = newHeight * aspectRatio; } canvas.width = Math.round(newWidth * dpr); canvas.height = Math.round(newHeight * dpr); canvas.style.width = `${newWidth}px`; canvas.style.height = `${newHeight}px`; ctx.scale(dpr, dpr); }
+            
+            // --- GESTION DU TERRAIN ---
+            const TERRAIN_SEGMENT_WIDTH = 100; const TERRAIN_MAX_SLOPE = 45;
+            function initTerrain() { terrainPoints = []; let currentX = -TERRAIN_SEGMENT_WIDTH; let currentY = GAME_HEIGHT / 1.5; while (currentX < GAME_WIDTH + TERRAIN_SEGMENT_WIDTH * 2) { terrainPoints.push({ x: currentX, y: currentY }); currentX += TERRAIN_SEGMENT_WIDTH; } }
+            function updateTerrain() { for (const point of terrainPoints) { point.x -= gameState.speed; } if (terrainPoints.length > 0 && terrainPoints[0].x < -TERRAIN_SEGMENT_WIDTH * 2) { terrainPoints.shift(); } while (terrainPoints[terrainPoints.length - 1].x < GAME_WIDTH + TERRAIN_SEGMENT_WIDTH) { const lastPoint = terrainPoints[terrainPoints.length - 1]; let newY = lastPoint.y + (Math.random() * TERRAIN_MAX_SLOPE * 2 - TERRAIN_MAX_SLOPE); newY += 1.5; newY = Math.max(GAME_HEIGHT / 2.5, Math.min(GAME_HEIGHT - 50, newY)); terrainPoints.push({ x: lastPoint.x + TERRAIN_SEGMENT_WIDTH, y: newY }); } }
+            function getTerrainInfoAt(x) { for (let i = 0; i < terrainPoints.length - 1; i++) { const p1 = terrainPoints[i]; const p2 = terrainPoints[i+1]; if (x >= p1.x && x < p2.x) { const percent = (x - p1.x) / (p2.x - p1.x); const height = p1.y + percent * (p2.y - p1.y); const angle = Math.atan2(p2.y - p1.y, p2.x - p1.x); return { height, angle }; } } return { height: GAME_HEIGHT, angle: 0 }; }
+            function drawBackgroundAndTerrain() { clouds.forEach(cloud => cloud.draw(ctx)); ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--ground-color'); ctx.beginPath(); if (terrainPoints.length > 0) { ctx.moveTo(terrainPoints[0].x, terrainPoints[0].y); for (let i = 1; i < terrainPoints.length; i++) { ctx.lineTo(terrainPoints[i].x, terrainPoints[i].y); } ctx.lineTo(GAME_WIDTH + TERRAIN_SEGMENT_WIDTH, GAME_HEIGHT); ctx.lineTo(-TERRAIN_SEGMENT_WIDTH, GAME_HEIGHT); } ctx.closePath(); ctx.fill(); }
+            
+            // --- SYSTÈMES VISUELS (Nuages & Particules) ---
+            class Cloud { constructor() { this.x = Math.random() * GAME_WIDTH; this.y = Math.random() * GAME_HEIGHT * 0.4 + 50; this.size = Math.random() * 40 + 30; this.speed = gameState.currentDifficulty.baseSpeed * (Math.random() * 0.2 + 0.1); this.parts = []; const numParts = Math.floor(Math.random() * 4) + 3; for (let i = 0; i < numParts; i++) { this.parts.push({ offsetX: (Math.random() - 0.5) * this.size * 1.5, offsetY: (Math.random() - 0.5) * this.size * 0.5, radius: (Math.random() * 0.4 + 0.6) * this.size }); } } update() { this.x -= this.speed; if (this.x + this.size * 2 < 0) { this.x = GAME_WIDTH + this.size * 2; this.y = Math.random() * GAME_HEIGHT * 0.4 + 50; } } draw(ctx) { ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--cloud-color'); ctx.beginPath(); this.parts.forEach(part => { ctx.moveTo(this.x + part.offsetX, this.y + part.offsetY); ctx.arc(this.x + part.offsetX, this.y + part.offsetY, part.radius, 0, Math.PI * 2); }); ctx.fill(); } }
+            function initClouds() { clouds = Array.from({ length: 15 }, () => new Cloud()); }
+            function updateClouds() { clouds.forEach(c => c.update()); }
+            class Particle { constructor(x, y, angle) { this.x = x; this.y = y; this.size = Math.random() * 4 + 2; const speed = Math.random() * 3 + 1; this.vx = -Math.cos(angle) * speed - gameState.speed * 0.5; this.vy = -Math.sin(angle) * speed; this.life = 1; this.gravity = 5; } update(dt) { this.x += this.vx; this.y += this.vy; this.vy += this.gravity * dt; this.life -= dt * 2; } draw(ctx) { ctx.globalAlpha = Math.max(0, this.life); ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--particle-color'); ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1; } }
+            function updateParticles(dt) { for (let i = particles.length - 1; i >= 0; i--) { particles[i].update(dt); if (particles[i].life <= 0) { particles.splice(i, 1); } } }
+            function drawParticles(ctx) { particles.forEach(p => p.draw(ctx)); }
+
+            // --- SYSTÈME DE COLLISION "PIXEL PERFECT" ---
+            class PolygonHitbox { constructor(modelPoints) { this.modelPoints = modelPoints; } } 
+            class CompositeHitbox { constructor(circles) { this.circles = circles; } }
+            function checkCirclePolygonCollision(circle, polygon, polyX, polyY, polyAngle) { const points = polygon.modelPoints.map(p => { const translatedX = p.x; const translatedY = p.y - polygon.height; const rotatedX = translatedX * Math.cos(polyAngle) - translatedY * Math.sin(polyAngle); const rotatedY = translatedX * Math.sin(polyAngle) + translatedY * Math.cos(polyAngle); return { x: rotatedX + polyX, y: rotatedY + polyY + polygon.height }; }); for (let i = 0; i < points.length; i++) { const p1 = points[i]; const p2 = points[(i + 1) % points.length]; const dx = p2.x - p1.x; const dy = p2.y - p1.y; const lenSq = dx * dx + dy * dy; if (lenSq === 0) continue; const dot = (((circle.x - p1.x) * dx) + ((circle.y - p1.y) * dy)) / lenSq; let closestPoint; if (dot < 0) { closestPoint = p1; } else if (dot > 1) { closestPoint = p2; } else { closestPoint = { x: p1.x + (dot * dx), y: p1.y + (dot * dy) }; } const distSq = (circle.x - closestPoint.x)**2 + (circle.y - closestPoint.y)**2; if (distSq < circle.radius**2) return true; } return false; }
+
+            // --- JOUEUR ---
+            const SLIDE_ANGLE_THRESHOLD = 0.2;
+            class Player {
+                constructor() {
+                    this.width = 50; this.height = 80; this.x = GAME_WIDTH / 4; this.y = GAME_HEIGHT / 2; this.vy = 0; this.gravity = 2200; this.jumpForce = 950; this.isOnGround = false; this.isSliding = false; this.moveSpeed = 450; this.angle = 0;
+                    this.hitbox = new CompositeHitbox([]);
+                    this.standingModel = [ { localX: 0, localY: -this.height/4, radius: this.width/2.2 }, { localX: 0, localY: -this.height/1.8, radius: this.width/3 } ];
+                    this.slidingModel = [ { localX: 0, localY: -this.height/4, radius: this.height/4 }, { localX: this.width/2.5, localY: -this.height/3.5, radius: this.height/4.5 } ];
+                }
+                update(dt) {
+                    if (keys.has('ArrowLeft')) this.x -= this.moveSpeed * dt;
+                    if (keys.has('ArrowRight')) this.x += this.moveSpeed * dt;
+                    this.x = Math.max(this.width / 2, Math.min(GAME_WIDTH - this.width / 2, this.x));
+                    if (keys.has('Space')) this.jump();
+                    const { height: groundHeight, angle: groundAngle } = getTerrainInfoAt(this.x);
+                    if (!this.isOnGround) { this.vy += this.gravity * dt; this.y += this.vy * dt; }
+                    if (this.y >= groundHeight - this.height) {
+                        this.y = groundHeight - this.height; this.vy = 0; this.isOnGround = true; this.angle = groundAngle;
+                        if (this.angle > SLIDE_ANGLE_THRESHOLD) {
+                            if (!this.isSliding) announce("Glissade !"); this.isSliding = true;
+                            if(Math.random() < 0.9) particles.push(new Particle(this.x, this.y + this.height, this.angle));
+                        } else { this.isSliding = false; }
+                    } else { this.isOnGround = false; this.isSliding = false; this.angle *= 0.95; }
+                    this.hitbox.circles = this.isSliding ? this.slidingModel : this.standingModel;
+                }
+                jump() { 
+                    if (this.isOnGround) { 
+                        this.vy = -this.jumpForce; this.isOnGround = false; this.isSliding = false; announce("Saut"); 
+                    } 
+                }
+                draw(ctx) {
+                    ctx.save();
+                    ctx.translate(this.x, this.y + this.height);
+                    ctx.rotate(this.angle);
+                    if (this.isSliding) {
+                        ctx.beginPath(); ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--penguin-color'); ctx.ellipse(0, -this.height/4, this.width / 1.5, this.height / 4, 0, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = 'white'; ctx.beginPath(); ctx.ellipse(10, -this.height/4, this.width/2, this.height/5, 0, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--penguin-color'); ctx.beginPath(); ctx.arc(this.width / 2, -this.height/3, this.height/4, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = 'white'; ctx.beginPath(); ctx.arc(this.width/2 + 5, -this.height/3 - 2, 5, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = 'black'; ctx.beginPath(); ctx.arc(this.width/2 + 7, -this.height/3 - 2, 2, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = 'orange'; ctx.beginPath(); ctx.moveTo(this.width/2 + 10, -this.height/3); ctx.lineTo(this.width/2 + 20, -this.height/3 + 3); ctx.lineTo(this.width/2 + 10, -this.height/3 + 6); ctx.closePath(); ctx.fill();
+                    } else {
+                        ctx.beginPath(); ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--penguin-color'); ctx.ellipse(0, -this.height/2, this.width / 2, this.height / 2, 0, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = 'white'; ctx.beginPath(); ctx.ellipse(0, -this.height/2, this.width/3, this.height/2.5, 0, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = 'white'; ctx.beginPath(); ctx.arc(-10, -this.height/2-15, 5, 0, Math.PI*2); ctx.arc(10, -this.height/2-15, 5, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = 'black'; ctx.beginPath(); ctx.arc(-8, -this.height/2-15, 2, 0, Math.PI*2); ctx.arc(12, -this.height/2-15, 2, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = 'orange'; ctx.beginPath(); ctx.moveTo(0, -this.height/2-5); ctx.lineTo(15, -this.height/2); ctx.lineTo(0, -this.height/2+5); ctx.closePath(); ctx.fill();
+                    }
+                    ctx.restore();
+                }
+            }
+            
+            // --- OBSTACLES ---
+            let nextObstacleSpawn = 0;
+            class GroundObstacle { constructor() { this.type = 'ground'; this.x = GAME_WIDTH + 100; this.isCrevasse = Math.random() > 0.65; this.width = this.isCrevasse ? (Math.random() * 100 + 150) : (Math.random() * 40 + 70); const rockHeight = (Math.random() * 40 + 60); this.depth = 80; this.height = rockHeight; const { height: groundHeight, angle: groundAngle } = getTerrainInfoAt(this.x); this.y = groundHeight - this.height; this.angle = groundAngle; if (!this.isCrevasse) { const shape = []; shape.push({ x: 0, y: this.height }); let currentX = 0; while(currentX < this.width) { const nextX = currentX + Math.random() * (this.width / 3) + 10; currentX = Math.min(nextX, this.width); shape.push({ x: currentX, y: Math.random() * (this.height * 0.8) }); } shape.push({ x: this.width, y: this.height }); this.hitbox = new PolygonHitbox(shape); this.hitbox.width = this.width; this.hitbox.height = this.height; } } update() { this.x -= gameState.speed; const { height: groundHeight, angle: groundAngle } = getTerrainInfoAt(this.x); this.y = groundHeight - this.height; this.angle = this.isCrevasse ? 0 : groundAngle; } draw(ctx) { if (this.isCrevasse) { const startInfo = getTerrainInfoAt(this.x); const endInfo = getTerrainInfoAt(this.x + this.width); const controlX = this.x + this.width / 2; const controlY = ((startInfo.height + endInfo.height) / 2) + this.depth + 40; ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--crevasse-color'); ctx.beginPath(); ctx.moveTo(this.x, startInfo.height); for (const point of terrainPoints) { if (point.x > this.x && point.x < this.x + this.width) { ctx.lineTo(point.x, point.y); } } ctx.lineTo(this.x + this.width, endInfo.height); ctx.quadraticCurveTo(controlX, controlY, this.x, startInfo.height); ctx.closePath(); ctx.fill(); } else { ctx.save(); ctx.translate(this.x, this.y); ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--rock-color'); ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--rock-shadow'); ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(this.hitbox.modelPoints[0].x, this.hitbox.modelPoints[0].y); for(let i = 1; i < this.hitbox.modelPoints.length; i++) { ctx.lineTo(this.hitbox.modelPoints[i].x, this.hitbox.modelPoints[i].y); } ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore(); } } }
+            class Bird { constructor() { this.type = 'bird'; this.isCrevasse = false; this.width = 60; this.height = 40; this.x = GAME_WIDTH; const groundHeight = getTerrainInfoAt(player.x).height; const playerJumpHeight = 350; const targetZone = groundHeight - player.height - (playerJumpHeight / 2); this.initialY = targetZone - (Math.random() - 0.5) * playerJumpHeight; this.y = this.initialY; this.amplitude = Math.random() * 30 + 20; this.frequency = Math.random() * 0.005 + 0.002; this.wingFlapAngle = 0; this.hitbox = new CompositeHitbox([ { x: -5, y: 0, radius: this.width/2.8 }, { x: 18, y: 0, radius: this.height/2 } ]); } update() { this.x -= gameState.speed * 1.1; this.y = this.initialY + Math.sin(this.x * this.frequency) * this.amplitude; this.wingFlapAngle = Math.sin(Date.now() * 0.02) * 0.5; } draw(ctx) { ctx.save(); ctx.translate(this.x + this.width / 2, this.y); ctx.scale(-1, 1); const birdColor = getComputedStyle(document.documentElement).getPropertyValue('--bird-color'); const birdAccentColor = getComputedStyle(document.documentElement).getPropertyValue('--bird-accent'); ctx.fillStyle = birdAccentColor; ctx.save(); ctx.rotate(-this.wingFlapAngle); ctx.beginPath(); ctx.moveTo(-5, 0); ctx.quadraticCurveTo(-25, -20, -45, 0); ctx.closePath(); ctx.fill(); ctx.restore(); ctx.fillStyle = birdColor; ctx.beginPath(); ctx.ellipse(0, 0, this.width / 2, this.height / 2, 0, 0, Math.PI * 2); ctx.fill(); ctx.beginPath(); ctx.arc(this.width / 2.5, 0, this.height/2.2, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = 'orange'; ctx.beginPath(); ctx.moveTo(this.width / 2 + 5, 0); ctx.lineTo(this.width/2 + 15, -3); ctx.lineTo(this.width/2+15, 3); ctx.closePath(); ctx.fill(); ctx.fillStyle = 'black'; ctx.beginPath(); ctx.arc(this.width/2.5, 0, 3, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = birdColor; ctx.save(); ctx.rotate(this.wingFlapAngle); ctx.beginPath(); ctx.moveTo(5, 0); ctx.quadraticCurveTo(25, -25, 45, -5); ctx.closePath(); ctx.fill(); ctx.restore(); ctx.restore(); } }
+            function updateObstacles() { nextObstacleSpawn -= gameState.speed; if (nextObstacleSpawn <= 0) { const lastObstacle = obstacles[obstacles.length - 1]; const birdChance = (!lastObstacle || lastObstacle.type === 'ground') ? 0.4 : 0.2; if (Math.random() < birdChance) { obstacles.push(new Bird()); } else { obstacles.push(new GroundObstacle()); } const { minGap, maxGap } = gameState.currentDifficulty; nextObstacleSpawn = (minGap + Math.random() * (maxGap - minGap)) / (gameState.speedMultiplier * 0.5 + 0.5); } obstacles.forEach(obs => obs.update()); obstacles = obstacles.filter(obs => obs.x + (obs.width || 100) > -50); }
+
+            function checkCollisions() {
+                for (const obstacle of obstacles) {
+                    if (obstacle.isCrevasse) {
+                        if (player.isOnGround && player.x > obstacle.x && player.x < obstacle.x + obstacle.width) { gameOver(); return; }
+                    } else { // Bird or Rock
+                        for(const pCircle of player.hitbox.circles) {
+                            // Transform player circle to world space
+                            const rotatedX = pCircle.localX * Math.cos(player.angle) - pCircle.localY * Math.sin(player.angle);
+                            const rotatedY = pCircle.localX * Math.sin(player.angle) + pCircle.localY * Math.cos(player.angle);
+                            const worldPlayerCircle = { x: player.x + rotatedX, y: (player.y + player.height) + rotatedY - (player.isSliding ? player.height/4 : player.height/2), radius: pCircle.radius };
+
+                            if (obstacle.hitbox instanceof PolygonHitbox) {
+                                if (checkCirclePolygonCollision(worldPlayerCircle, obstacle.hitbox, obstacle.x, obstacle.y, obstacle.angle)) { gameOver(); return; }
+                            } else if (obstacle.hitbox instanceof CompositeHitbox) {
+                                for (const oCircle of obstacle.hitbox.circles) {
+                                    const worldX = (obstacle.x + obstacle.width/2) - oCircle.x; const worldY = obstacle.y + oCircle.y;
+                                    const dx = worldPlayerCircle.x - worldX; const dy = worldPlayerCircle.y - worldY;
+                                    if (dx*dx + dy*dy < (worldPlayerCircle.radius + oCircle.radius)**2) { gameOver(); return; }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // --- UI, ÉVÉNEMENTS, GESTION D'ÉTAT, PERSISTANCE (INCHANGÉS) ---
+            function updateHUD() { scoreEl.textContent = Math.floor(gameState.score); distanceEl.textContent = `${Math.floor(gameState.distance / 10)} m`; speedEl.textContent = `${Math.floor(gameState.speed * 10)} km/h`; }
+            function setupEventListeners() { window.addEventListener('resize', resizeCanvas); document.addEventListener('keydown', (e) => { if (['Space', 'ArrowLeft', 'ArrowRight', 'Enter'].includes(e.code)) e.preventDefault(); keys.add(e.code); }); document.addEventListener('keyup', (e) => keys.delete(e.code)); startGameBtn.addEventListener('click', startGame); restartGameBtn.addEventListener('click', startGame); themeToggleBtn.addEventListener('click', toggleTheme); volumeSlider.addEventListener('input', (e) => { gameState.volume = parseFloat(e.target.value); savePreferences(); }); difficultySelector.addEventListener('click', (e) => { if (e.target.classList.contains('difficulty-btn')) { difficultySelector.querySelector('.active').classList.remove('active'); e.target.classList.add('active'); gameState.difficulty = e.target.dataset.difficulty; } }); }
+            function initGame() { loadPreferences(); resizeCanvas(); highScoreEl.textContent = gameState.highScore; }
+            function startGame() { gameState.currentDifficulty = DIFFICULTY_SETTINGS[gameState.difficulty]; gameState.running = true; gameState.score = 0; gameState.distance = 0; gameState.speedMultiplier = 1; initTerrain(); player = new Player(); obstacles = []; nextObstacleSpawn = GAME_WIDTH; initClouds(); particles = []; mainMenu.classList.add('hidden'); gameOverMenu.classList.add('hidden'); hud.classList.remove('hidden'); lastFrameTime = performance.now(); gameLoop(lastFrameTime); announce(`Début de la partie en mode ${gameState.difficulty}.`); }
+            function gameOver() { gameState.running = false; if (Math.floor(gameState.score) > gameState.highScore) { gameState.highScore = Math.floor(gameState.score); savePreferences(); } finalScoreEl.textContent = Math.floor(gameState.score); highScoreEl.textContent = gameState.highScore; hud.classList.add('hidden'); gameOverMenu.classList.remove('hidden'); restartGameBtn.focus(); announce(`Partie terminée. Score final : ${Math.floor(gameState.score)}`); }
+            function savePreferences() { localStorage.setItem('glissadePolairePrefs', JSON.stringify({ highScore: gameState.highScore, volume: gameState.volume, theme: gameState.theme, difficulty: gameState.difficulty })); }
+            function loadPreferences() { const prefsJSON = localStorage.getItem('glissadePolairePrefs'); if (prefsJSON) { const prefs = JSON.parse(prefsJSON); gameState.highScore = prefs.highScore || 0; gameState.volume = prefs.volume !== undefined ? prefs.volume : 0.5; gameState.theme = prefs.theme || 'dark'; gameState.difficulty = prefs.difficulty || 'normal'; } applyPreferences(); }
+            function applyPreferences() { volumeSlider.value = gameState.volume; document.documentElement.setAttribute('data-theme', gameState.theme); difficultySelector.querySelector('.active').classList.remove('active'); difficultySelector.querySelector(`[data-difficulty="${gameState.difficulty}"]`).classList.add('active'); }
+            function toggleTheme() { gameState.theme = gameState.theme === 'light' ? 'dark' : 'light'; document.documentElement.setAttribute('data-theme', gameState.theme); savePreferences(); }
+            function announce(message) { announcer.textContent = message; setTimeout(() => { announcer.textContent = ''; }, 100); }
+            
+            initGame();
+            setupEventListeners();
+        });
+    </script>
+</body>
+</html>
